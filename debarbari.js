@@ -1,7 +1,26 @@
 var map;
-var DATA = [];
-var fb = new Firebase('https://vpc.firebaseio.com/debarbari');
+var DATA = []; 
+var config = {
+      apiKey: "AIzaSyCUh3jgJD4E_YZUaBvRAeSKwf5lvDv4sy4",
+      authDomain: "vpc.firebaseapp.com",
+      databaseURL: "https://vpc.firebaseio.com",
+      projectId: "firebase-vpc",
+      storageBucket: "firebase-vpc.appspot.com",
+      messagingSenderId: "400599674784"
+};
+      
 
+try {
+  firebase.initializeApp(config)
+} catch (err) {
+  // we skip the "already exists" message which is
+  // not an actual error when we're hot-reloading
+  if (!/already exists/.test(err.message)) {
+    console.error('Firebase initialization error', err.stack)
+  }
+}
+
+const fb = firebase
 // Demolished Church of the Templari is aka Santa Maria dell'Ascensione
 // Demolished Convent of the Celestia is aka Santa Maria de la Celestia
 // Demolished Church of Santa Maria dei Servi not really demolished?
@@ -128,7 +147,7 @@ function debarbariInit() {
 }
 
 function initializeSearch() {
-  fb.child('vpc/features').on('child_added', function (snapshot) {
+  fb.database().ref('vpc/features').on('child_added', function (snapshot) {
     DATA.push(snapshot.val());
     var names = getAutoCompleteNames([DATA]);
     $(".search").autocomplete({ source: names });
@@ -140,7 +159,7 @@ function initializeSearch() {
 }
 
 function initializeLayers() {
-  fb.child('vpc/layers').on('child_added', function (snapshot) {
+  fb.database().ref('vpc/features').on('child_added', function (snapshot) {
     var data = snapshot.val();
     var newOption = '<li role="presentation"><a role="menuitem" id="'+data.id+'-layer" href="#">'+data.name+'</a></li>';
 
@@ -504,18 +523,19 @@ function toggleLayer(type, color) {
 }
 
 // Firebase auth
-var auth = new FirebaseSimpleLogin(fb, fbUserCallback);
+//var auth = new FirebaseSimpleLogin(fb, fbUserCallback);
 var loggedIn = false;
 
+/*
 function fbUserCallback(error, user) {
-  if (error) { /* Error */
+  if (error) { 
     console.log(error);
     loggedIn = false;
     $('#login-text').show();
     $('#loggedin-text').hide();
     $('#login-form').hide();
   }
-  else if (user) { /* Logged in */
+  else if (user) { //logged in
     loggedIn = true;
     $('#login-form').hide();
     $('#login-text').hide();
@@ -523,7 +543,7 @@ function fbUserCallback(error, user) {
     $('#loggedin-text').show();
     $('#drawmode').css('display', 'inline');
     $('.layers-menu').append('<li id="new-layer-menu" role="presentation"><a role="menu-item" href="#" data-toggle="modal" data-target="#new-layer">New Layer</a></li>');
-  } else { /* Logged out */
+  } else { // Logged out 
     loggedIn = false;
     $('#login-text').show();
     $('#loggedin-text').hide();
@@ -532,20 +552,55 @@ function fbUserCallback(error, user) {
     $('#new-layer-menu').remove();
   }
 }
-
+*/
 function fbLogout() {
-  auth.logout();
+  firebase.auth().signOut();
 }
 
+firebase.auth().onAuthStateChanged(user => {
+  if(user) {
+    loggedIn = true;
+    $('#login-form').hide();
+    $('#login-text').hide();
+    $('#loggedin-username').text(user.email);
+    $('#loggedin-text').show();
+    $('#drawmode').css('display', 'inline');
+    $('.layers-menu').append('<li id="new-layer-menu" role="presentation"><a role="menu-item" href="#" data-toggle="modal" data-target="#new-layer">New Layer</a></li>');
+  }
+  else if(!user || user == null){
+    console.log("The fuck happend?");
+    firebase.auth().signOut()
+    loggedIn = false;
+    $('#login-text').show();
+    $('#loggedin-text').hide();
+    $('#login-form').hide();
+  }
+
+});
+
 function fbLogin(email, password) {
+  firebase.auth().signInWithEmailAndPassword(email, password).catch(function(error) {
+    var errorCode = error.code;
+    var errorMessage = error.message;
+    console.log(errorMessage)
+    loggedIn = false;
+    $('#login-text').show();
+    $('#loggedin-text').hide();
+  });
+
+
+
+  /*
   auth.login('password', {
     email: email,
     password: password,
-    rememberMe: true
+    //rememberMe: true
   }, function(error, user) { 
     if (error)
       console.log(error);
+    console.log("Wut?")
   });
+  */
 }
 
 function fbSignup(email, password) {
@@ -561,7 +616,7 @@ function showLoginForm(type) {
   else {
     alert("Not working yet. Check back soon!");
     return; //
-    callback = fbSignup;
+    //callback = fbSignup;
   }
 
   $('#password').on('keyup', function(e) {
